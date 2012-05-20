@@ -153,12 +153,12 @@ int main(int argc, char *argv[]) {
 
             case 'p':
             	udp_payload_s = strtol(optarg,pEnd,BASE_DECIMAL);
-        		printf("i: udp_payload=%s\n",udp_payload);
+        		printf("p: udp_payload_s=%d\n",udp_payload_s);
                 break;
 
             case 't':
             	rate = strtol(optarg,pEnd,BASE_DECIMAL);
-        		printf("i: rate=%s\n",rate);
+        		printf("p: rate=%d\n",rate);
                 break;
 
             default:
@@ -262,6 +262,7 @@ int main(int argc, char *argv[]) {
 				ETHERTYPE_VLAN, vlan_prio, vlan_cfi_flag, vlan_id,
 				ETHERTYPE_IP, vlan_payload, vlan_payload_s,
 				lnet, vlan_ptag);
+
 		usleep(rate);
 	}
 
