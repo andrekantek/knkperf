@@ -32,11 +32,17 @@
                 }                                                       \
         } while (0)
 
+/*
+ ============================================================================
+*/
 static void usage(char *name) {
     fprintf(stderr, "usage %s -v [vlan-id] -q [vlan-prio] -a [srcMAC] -b [dstMac] -d [dstIP.oprt] -s [srcIP.port] "
     		"-p [payload size] -t [rate (us)] -i [interface] \n", name);
 }
 
+/*
+ ============================================================================
+*/
 int main(int argc, char *argv[]) {
 
 	printf("started\n");
@@ -53,6 +59,8 @@ int main(int argc, char *argv[]) {
     struct timeval start_time;
     struct timeval curr_time;
     struct timeval end_time;
+	int repeat = 0;
+	int repeat_max = 0;
 
 	// layer 2
 	libnet_ptag_t vlan_ptag = 0;
@@ -92,7 +100,7 @@ int main(int argc, char *argv[]) {
 	printf("parse input\n");
     u_char *cp;
 	int c;
-    while ((c = getopt(argc, argv, "v:q:a:b:d:s:p:i:t:")) != EOF)
+    while ((c = getopt(argc, argv, "v:q:a:b:d:s:p:i:t:r:")) != EOF)
     {
         switch (c)
         {
@@ -159,6 +167,11 @@ int main(int argc, char *argv[]) {
             case 't':
             	rate = strtol(optarg,pEnd,BASE_DECIMAL);
         		printf("p: rate=%d\n",rate);
+                break;
+
+            case 'r':
+            	repeat_max = strtol(optarg,pEnd,BASE_DECIMAL);
+        		printf("p: repeat_max=%d\n",repeat_max);
                 break;
 
             default:
@@ -231,12 +244,11 @@ int main(int argc, char *argv[]) {
 	 *  Write it to the wire.
 	 */
 	printf("libnet_write, packet_size=%d\n",libnet_getpacket_size(lnet));
-	int repeat = 0;
 	u_int16_t udp_prio_src_prt = udp_src_prt;
 	u_int16_t udp_prio_dst_prt = udp_dst_prt;
     gettimeofday(&start_time, NULL);
 
-	for (repeat = 0; repeat < 10; ++repeat) {
+	for (repeat = 0; repeat < repeat_max; ++repeat) {
 		int32_t bytes_written = libnet_write(lnet);
 		if (bytes_written == -1) {
 			fprintf(stderr, "Write error: %s\n", libnet_geterror(lnet));
