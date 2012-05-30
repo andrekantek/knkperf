@@ -3,6 +3,7 @@
 	<name>vlanprio_traffic</name>
 	<comment></comment>
 	<projects>
+		<project>libnet</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

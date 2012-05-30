@@ -13,3 +13,6 @@
 
 # Dependencies
 *.d
+
+# binary
+knkperf

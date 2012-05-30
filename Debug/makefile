@@ -23,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: vlanprio_traffic
+all: knkperf
 
 # Tool invocations
-vlanprio_traffic: $(OBJS) $(USER_OBJS)
+knkperf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "vlanprio_traffic" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "knkperf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) vlanprio_traffic
+	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) knkperf
 	-@echo ' '
 
 .PHONY: all clean dependents
