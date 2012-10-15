@@ -35,10 +35,10 @@
  ============================================================================
  */
 static void usage(char *name) {
-	fprintf(
-			stderr,
-			"usage %s -v [vlan-id] -q [vlan-prio] -a [srcMAC] -b [dstMac] -d [dstIP.oprt] -s [srcIP.port] "
-					"-p [payload size] -t [rate (us)] -i [interface] \n", name);
+	fprintf(stdout,
+			"usage %s -v [vlan-id] -q [vlan-prio] -x [rotate vlan prio] -i [interface] "
+			"-a [srcMAC] -b [dstMac] -d [dstIP.oprt] -s [srcIP.port] "
+			"-p [payload size] -t [tx rate (us)] -r [# of repeats]\n", name);
 }
 
 /*
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 	printf("started\n");
 
 	libnet_t *lnet;
-	char * pEnd = NULL;
+	char *pEnd = NULL;
 	char *host_dst = "2.2.2.2";
 	char *host_src = "1.1.1.1";
 	int len;
@@ -61,11 +61,12 @@ int main(int argc, char *argv[]) {
 	struct timeval end_time;
 	int repeat = 0;
 	int repeat_max = 0;
+	int rotate_vlan_prio = 0;
 
 	// layer 2
 	libnet_ptag_t vlan_ptag = 0;
 	u_int8_t vlan_cfi_flag = 0;
-	u_char* mac_dst, *mac_src;
+	u_char *mac_dst, *mac_src;
 	u_int8_t *vlan_payload = NULL;
 	u_int32_t vlan_payload_s = 0;
 	u_int8_t vlan_prio;
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
 	u_int8_t ip_ttl = 64;
 	u_short ip_proto = IPPROTO_UDP;
 	u_int16_t ip_chksum = 0;
-	u_int8_t* ip_payload = NULL;
+	u_int8_t *ip_payload = NULL;
 	u_int32_t ip_payload_s = 0;
 	u_int32_t ip_src;
 	u_int32_t ip_dst;
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
 	printf("parse input\n");
 	char *cp;
 	int c;
-	while ((c = getopt(argc, argv, "v:q:a:b:d:s:p:i:t:r:")) != EOF) {
+	while ((c = getopt(argc, argv, "v:q:a:b:d:s:p:i:t:r:x:")) != EOF) {
 		switch (c) {
 		case 'v':
 			vlan_id = strtol(optarg, &pEnd, BASE_DECIMAL);
@@ -164,12 +165,17 @@ int main(int argc, char *argv[]) {
 
 		case 't':
 			rate = strtol(optarg, &pEnd, BASE_DECIMAL);
-			printf("p: rate=%d\n", rate);
+			printf("t: tx-rate=%d\n", rate);
 			break;
 
 		case 'r':
 			repeat_max = strtol(optarg, &pEnd, BASE_DECIMAL);
-			printf("p: repeat_max=%d\n", repeat_max);
+			printf("r: repeat_max=%d\n", repeat_max);
+			break;
+
+		case 'x':
+			rotate_vlan_prio = 1;
+			printf("x: rotate_vlan_prio=%d\n", rotate_vlan_prio);
 			break;
 
 		default:
@@ -241,7 +247,8 @@ int main(int argc, char *argv[]) {
 	/*
 	 *  Write it to the wire.
 	 */
-	printf("libnet_write, packet_size=%d\n", libnet_getpacket_size(lnet));
+	u_int32_t pkt_size = libnet_getpacket_size(lnet);
+	printf("libnet_write, packet_size=%d\n", pkt_size);
 	u_int16_t udp_prio_src_prt = udp_src_prt;
 	u_int16_t udp_prio_dst_prt = udp_dst_prt;
 	gettimeofday(&start_time, NULL);
@@ -253,15 +260,17 @@ int main(int argc, char *argv[]) {
 			goto bad;
 		}
 
-		// modify packet
-		if (vlan_prio == 7) {
-			vlan_prio = 0;
-			udp_prio_src_prt = udp_src_prt + vlan_prio;
-			udp_prio_dst_prt = udp_dst_prt + vlan_prio;
-		} else {
-			vlan_prio++;
-			udp_prio_src_prt++;
-			udp_prio_dst_prt++;
+		if (rotate_vlan_prio==1) {
+			// modify packet
+			if (vlan_prio == 7) {
+				vlan_prio = 0;
+				udp_prio_src_prt = udp_src_prt + vlan_prio;
+				udp_prio_dst_prt = udp_dst_prt + vlan_prio;
+			} else {
+				vlan_prio++;
+				udp_prio_src_prt++;
+				udp_prio_dst_prt++;
+			}
 		}
 
 		udp_ptag = libnet_build_udp(udp_prio_src_prt, udp_prio_dst_prt,
@@ -278,15 +287,19 @@ int main(int argc, char *argv[]) {
 	gettimeofday(&end_time, NULL);
 
 	libnet_timersub(&end_time, &start_time, &delta_time);
-	fprintf(stderr, "Total time spent in loop: %ld.%ld\n", delta_time.tv_sec,
+	fprintf(stdout, "Total time spent in loop: %ld.%ld\n", delta_time.tv_sec,
 			delta_time.tv_usec);
 
 	struct libnet_stats ls;
 	libnet_stats(lnet, &ls);
-	fprintf(stderr, "Packets sent:  %lld\n"
+	fprintf(stdout, "Packets sent:  %lld\n"
 			"Packet errors: %lld\n"
 			"Bytes written: %lld\n", ls.packets_sent, ls.packet_errors,
 			ls.bytes_written);
+
+	float delta_time_us = delta_time.tv_sec + (delta_time.tv_usec /1000000.0);
+	float tx_speed = ((ls.bytes_written * 8) / delta_time_us);
+	fprintf(stdout, "Tx speed :  %f bps\n", tx_speed);
 
 	libnet_destroy(lnet);
 	return (EXIT_SUCCESS);
