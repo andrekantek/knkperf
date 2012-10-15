@@ -36,9 +36,9 @@
  */
 static void usage(char *name) {
 	fprintf(stdout,
-			"usage %s -v [vlan-id] -q [vlan-prio] -x [rotate vlan prio] -i [interface] "
-			"-a [srcMAC] -b [dstMac] -d [dstIP.oprt] -s [srcIP.port] "
-			"-p [payload size] -t [tx rate (us)] -r [# of repeats]\n", name);
+			"usage %s -v [vlan-id] -q [vlan-prio] -x [rotate vlan-prio] \n"
+			"\t -i [interface] -a [srcMAC] -s [srcIP.port] -b [dstMac] -d [dstIP.oprt] \n"
+			"\t -p [payload size] -t [tx rate (bps)] -r [# of packets]\n", name);
 }
 
 /*
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 	char *host_dst = "2.2.2.2";
 	char *host_src = "1.1.1.1";
 	int len;
-	int rate;
+	int tx_speed_bps;
 	char *eth_device = NULL;
 	char errbuf[LIBNET_ERRBUF_SIZE];
 	struct timeval delta_time;
@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
 	int repeat = 0;
 	int repeat_max = 0;
 	int rotate_vlan_prio = 0;
+	u_int32_t loop_delay = 80;
 
 	// layer 2
 	libnet_ptag_t vlan_ptag = 0;
@@ -164,8 +165,8 @@ int main(int argc, char *argv[]) {
 			break;
 
 		case 't':
-			rate = strtol(optarg, &pEnd, BASE_DECIMAL);
-			printf("t: tx-rate=%d\n", rate);
+			tx_speed_bps = strtol(optarg, &pEnd, BASE_DECIMAL);
+			printf("t: tx_speed_bps=%d\n", tx_speed_bps);
 			break;
 
 		case 'r':
@@ -253,6 +254,10 @@ int main(int argc, char *argv[]) {
 	u_int16_t udp_prio_dst_prt = udp_dst_prt;
 	gettimeofday(&start_time, NULL);
 
+	float rate_tx = ((((float)pkt_size * 8)/(float)tx_speed_bps))*1000000;
+	printf("rate_tx=%f, pkt_size=%d, tx_speed_bps=%d\n", rate_tx, (pkt_size * 8), tx_speed_bps);
+	printf("rate_tx=%d\n", (u_int32_t)rate_tx);
+
 	for (repeat = 0; repeat < repeat_max; ++repeat) {
 		int32_t bytes_written = libnet_write(lnet);
 		if (bytes_written == -1) {
@@ -281,7 +286,9 @@ int main(int argc, char *argv[]) {
 				vlan_prio, vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload,
 				vlan_payload_s, lnet, vlan_ptag);
 
-		usleep(rate);
+
+
+		usleep(((u_int32_t)rate_tx - loop_delay));
 	}
 
 	gettimeofday(&end_time, NULL);
