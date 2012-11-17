@@ -58,14 +58,9 @@ int main(int argc, char *argv[]) {
 	printf("=====  started ======\n");
 
 	gchar *interface = "eth0";
-	gint svid = 0;
-	gint svidprio = -1;
-	gboolean svidrotate = FALSE;
-	gchar *stpid = "0x8100";
-	gint stpid_val = TPID_VLAN_8100;
-	gint cvid     = 0;
-	gint cvidprio = -1;
-	gboolean cvidrotate = FALSE;
+	gint vid = 0;
+	gint vidprio = -1;
+	gboolean vidrotate = FALSE;
 	gchar *macsrc = "00:00:00:00:00:00";
 	gchar *macdst = "00:00:00:00:00:00";
 	gchar *ipdst  = "0.0.0.0.0";
@@ -78,13 +73,9 @@ int main(int argc, char *argv[]) {
 
 	GOptionEntry cmd_entries[] = {
 		{ "interface"  , 'i', 0, G_OPTION_ARG_STRING , &interface  , "interface", NULL },
-		{ "svid"       ,  0 , 0, G_OPTION_ARG_INT    , &svid       , "svlan id [1-4096]", NULL },
-		{ "svidprio"   ,  0 , 0, G_OPTION_ARG_INT    , &svidprio   , "svlan priority [0-7]", NULL },
-		{ "svidrotate" ,  0 , 0, G_OPTION_ARG_NONE   , &svidrotate , "rotate svlan priority", NULL },
-		{ "stpid"      ,  0 , 0, G_OPTION_ARG_STRING , &stpid      , "svlan tpid val [0x8100, 0x88a8, 0x9100, 0x9200, 0x9300]", NULL },
-		{ "cvid"       ,  0 , 0, G_OPTION_ARG_INT    , &cvid       , "cvlan id [1-4096]", NULL },
-		{ "cvidprio"   ,  0 , 0, G_OPTION_ARG_INT    , &cvidprio   , "cvlan priority [0-7]", NULL },
-		{ "cvidrotate" ,  0 , 0, G_OPTION_ARG_NONE   , &cvidrotate , "rotate cvlan priority", NULL },
+		{ "vid"        ,  0 , 0, G_OPTION_ARG_INT    , &vid        , "vlan id [1-4096]", NULL },
+		{ "vidprio"    ,  0 , 0, G_OPTION_ARG_INT    , &vidprio    , "vlan priority [0-7]", NULL },
+		{ "rotate"     ,  0 , 0, G_OPTION_ARG_NONE   , &vidrotate  , "rotate vlan priority", NULL },
 		{ "macsrc"     ,  0 , 0, G_OPTION_ARG_STRING , &macsrc     , "source mac address", NULL },
 		{ "macdst"     ,  0 , 0, G_OPTION_ARG_STRING , &macdst     , "destination mac address", NULL },
 		{ "ipsrc"      ,  0 , 0, G_OPTION_ARG_STRING , &ipsrc      , "source IP ", NULL },
@@ -107,47 +98,19 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	// checks
-	if (svid < 1 || svid > 4096) {
-		fprintf(stderr, "invalid svid: %d\n", svid);
+	if (vid < 1 || vid > 4096) {
+		fprintf(stderr, "invalid vid: %d\n", vid);
 		return (EXIT_FAILURE);
 	}
-	if (svidprio < 0 || svidprio > 7) {
-		fprintf(stderr, "invalid svidprio: %d\n", svidprio);
-		return (EXIT_FAILURE);
-	}
-	if (cvid < 1 || cvid > 4096) {
-		fprintf(stderr, "invalid cvid: %d\n", cvid);
-		return (EXIT_FAILURE);
-	}
-	if (cvidprio < 0 || cvidprio > 7) {
-		fprintf(stderr, "invalid cvidprio: %d\n", cvidprio);
-		return (EXIT_FAILURE);
-	}
-
-	g_ascii_strdown(stpid,strlen(stpid));
-	if (g_strcmp0(stpid, TPID_VLAN_8100_STR) == 0) {
-		stpid_val = TPID_VLAN_8100;
-	} else if (g_strcmp0(stpid, TPID_VLAN_88A8_STR) == 0) {
-		stpid_val = TPID_VLAN_88A8;
-	} else if (g_strcmp0(stpid, TPID_VLAN_9100_STR) == 0) {
-		stpid_val = TPID_VLAN_9100;
-	} else if (g_strcmp0(stpid, TPID_VLAN_9200_STR) == 0) {
-		stpid_val = TPID_VLAN_9200;
-	} else if (g_strcmp0(stpid, TPID_VLAN_9300_STR) == 0) {
-		stpid_val = TPID_VLAN_9300;
-	} else {
-		fprintf(stderr, "invalid stpid: %s\n", stpid);
+	if (vidprio < 0 || vidprio > 7) {
+		fprintf(stderr, "invalid vidprio: %d\n", vidprio);
 		return (EXIT_FAILURE);
 	}
 
 	g_print("interface   %s\n",interface) ;
-	g_print("svid        %d\n",svid) ;
-	g_print("svidprio    %d\n",svidprio) ;
-	g_print("svidrotate  %d\n",svidrotate) ;
-	g_print("stpid       %s\n",stpid) ;
-	g_print("cvid        %d\n",cvid) ;
-	g_print("cvidprio    %d\n",cvidprio) ;
-	g_print("cvidrotate  %d\n",cvidrotate) ;
+	g_print("vid        %d\n",vid) ;
+	g_print("vidprio    %d\n",vidprio) ;
+	g_print("vidrotate  %d\n",vidrotate) ;
 	g_print("macdst      %s\n",macdst) ;
 	g_print("ipdst       %s\n",ipdst) ;
 	g_print("udpdst      %d\n",udpdst) ;
@@ -170,17 +133,17 @@ int main(int argc, char *argv[]) {
 	struct timeval end_time;
 	int repeat = 0;
 	int repeat_max = 0;
-	int rotate_svlan_prio = 0;
+	int rotate_vlan_prio = 0;
 	u_int32_t loop_delay = 80;
 
 	// layer 2
 	u_char *mac_dst, *mac_src;
-	libnet_ptag_t svlan_ptag = 0;
-	u_int8_t svlan_cfi_flag = 0;
-	u_int8_t *svlan_payload = NULL;
-	u_int32_t svlan_payload_s = 0;
-	u_int8_t svlan_prio;
-	u_int16_t svlan_id;
+	libnet_ptag_t vlan_ptag = 0;
+	u_int8_t vlan_cfi_flag = 0;
+	u_int8_t *vlan_payload = NULL;
+	u_int32_t vlan_payload_s = 0;
+	u_int8_t vlan_prio;
+	u_int16_t vlan_id;
 
 	// layer 3
 	libnet_ptag_t ip_ptag = 0;
@@ -206,15 +169,15 @@ int main(int argc, char *argv[]) {
 
     mac_src = libnet_hex_aton(macsrc, &len);
     mac_dst = libnet_hex_aton(macdst, &len);
-    svlan_id = (u_int16_t) svid;
-    svlan_prio = (u_int8_t) svidprio;
+    vlan_id = (u_int16_t) vid;
+    vlan_prio = (u_int8_t) vidprio;
     udp_src_prt = (u_int16_t) udpsrc;
     udp_dst_prt = (u_int16_t) udpdst;
     eth_device = interface;
     udp_payload_s = pktsize;
     tx_speed_bps = txrate;
     repeat_max = packets;
-    rotate_svlan_prio = (int) svidrotate;
+    rotate_vlan_prio = (int) vidrotate;
     host_dst = ipdst;
     host_src = ipsrc;
 
@@ -269,15 +232,14 @@ int main(int argc, char *argv[]) {
 
 	//====================================================================
 	printf("libnet_build_802_1q\n");
-	svlan_ptag = libnet_build_802_1q(mac_dst, mac_src, stpid_val, svlan_prio,
-			svlan_cfi_flag, svlan_id, ETHERTYPE_IP, svlan_payload, svlan_payload_s,
+	vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN, vlan_prio,
+			vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
 			lnet, 0);
-	if (svlan_ptag == -1) {
+	if (vlan_ptag == -1) {
 		fprintf(stderr, "Can't build 802.1q header: %s\n",
 				libnet_geterror(lnet));
 		goto bad;
 	}
-
 	//=====================================================================
 	/*
 	 *  Write it to the wire.
@@ -299,14 +261,14 @@ int main(int argc, char *argv[]) {
 			goto bad;
 		}
 
-		if (rotate_svlan_prio==1) {
+		if (rotate_vlan_prio==1) {
 			// modify packet
-			if (svlan_prio == 7) {
-				svlan_prio = 0;
-				udp_prio_src_prt = udp_src_prt + svlan_prio;
-				udp_prio_dst_prt = udp_dst_prt + svlan_prio;
+			if (vlan_prio == 7) {
+				vlan_prio = 0;
+				udp_prio_src_prt = udp_src_prt + vlan_prio;
+				udp_prio_dst_prt = udp_dst_prt + vlan_prio;
 			} else {
-				svlan_prio++;
+				vlan_prio++;
 				udp_prio_src_prt++;
 				udp_prio_dst_prt++;
 			}
@@ -316,9 +278,9 @@ int main(int argc, char *argv[]) {
 				udp_pkt_len, udp_checksum, udp_payload, udp_payload_s, lnet,
 				udp_ptag);
 
-		svlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN,
-				svlan_prio, svlan_cfi_flag, svlan_id, ETHERTYPE_IP, svlan_payload,
-				svlan_payload_s, lnet, svlan_ptag);
+		vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN,
+				vlan_prio, vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload,
+				vlan_payload_s, lnet, vlan_ptag);
 
 
 
