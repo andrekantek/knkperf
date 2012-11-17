@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lnet
+LIBS := -lnet -lglib-2.0
 
