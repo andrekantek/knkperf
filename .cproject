@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<?fileVersion 4.0.0?>
-
-<cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="cdt.managedbuild.config.gnu.exe.debug.1591580418">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.exe.debug.1591580418" moduleId="org.eclipse.cdt.core.settings" name="Debug">
@@ -32,6 +30,8 @@
 								<option id="gnu.c.compiler.option.include.paths.875539112" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/include/glib-2.0"/>
 									<listOptionValue builtIn="false" value="/usr/lib/i386-linux-gnu/glib-2.0/include"/>
+									<listOptionValue builtIn="false" value="/usr/include/glib-2.0/glib"/>
+									<listOptionValue builtIn="false" value="/usr/lib/x86_64-linux-gnu/glib-2.0/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.984958389" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -118,12 +118,13 @@
 			<path value=""/>
 		</doc-comment-owner>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.1591580418;cdt.managedbuild.config.gnu.exe.debug.1591580418.;cdt.managedbuild.tool.gnu.c.compiler.exe.debug.140556693;cdt.managedbuild.tool.gnu.c.compiler.input.984958389">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1170131499;cdt.managedbuild.config.gnu.exe.release.1170131499.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.1472483033;cdt.managedbuild.tool.gnu.c.compiler.input.482864764">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1170131499;cdt.managedbuild.config.gnu.exe.release.1170131499.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.1472483033;cdt.managedbuild.tool.gnu.c.compiler.input.482864764">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.1591580418;cdt.managedbuild.config.gnu.exe.debug.1591580418.;cdt.managedbuild.tool.gnu.c.compiler.exe.debug.140556693;cdt.managedbuild.tool.gnu.c.compiler.input.984958389">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
