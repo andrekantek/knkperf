@@ -22,21 +22,6 @@
 
 #include <glib.h>
 
-#define BASE_DECIMAL 10
-
-#define TPID_VLAN_8100          0x8100
-#define TPID_VLAN_88A8          0x88a8
-#define TPID_VLAN_9100          0x9100
-#define TPID_VLAN_9200          0x9200
-#define TPID_VLAN_9300          0x9300
-
-#define TPID_VLAN_8100_STR          "0x8100"
-#define TPID_VLAN_88A8_STR          "0x88a8"
-#define TPID_VLAN_9100_STR          "0x9100"
-#define TPID_VLAN_9200_STR          "0x9200"
-#define TPID_VLAN_9300_STR          "0x9300"
-
-
 #define BUFFER_CHAR 256
 
 #define libnet_timersub(tvp, uvp, vvp)                                  \
@@ -59,6 +44,7 @@ struct parsed_options
 	GString*  ipsrc;
 	gint      vid;
 	gint      vidprio;
+	gint      dscp;
 	gboolean  vidrotate;
 	gint      udpsrc;
 	gint      udpdst;
@@ -80,8 +66,6 @@ enum {
    QUEUE_SIZE = 8,
 }  QUEUE;
 
-
-
 gint32 parseOptions(int argc, char *argv[], parsed_options_t* options);
 
 gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* options);
@@ -99,6 +83,7 @@ gint32 main(int argc, char *argv[]) {
 	options.macdst    = g_string_new("00:00:00:00:00:00");
 	options.ipdst     = g_string_new("000.000.000.000");
 	options.ipsrc     = g_string_new("000.000.000.000");
+	options.dscp      =  0;
 	options.vid       =  0;
 	options.vidprio   = -1;
 	options.vidrotate =  0;
@@ -111,6 +96,7 @@ gint32 main(int argc, char *argv[]) {
 	//==========================================================================
 	parseOptions(argc,argv,&options);
 
+	//==========================================================================
 	printf("init libnet\n");
 	gint q = 0;
 	libnet_t *tx_queue[QUEUE_SIZE];
@@ -155,7 +141,7 @@ gint32 main(int argc, char *argv[]) {
 	printf("libnet_write, packet_size=%d\n", pkt_size);
 	gettimeofday(&start_time, NULL);
 	float rate_tx = ((((float)pkt_size * 8)/(float)tx_speed_bps))*1000000;
-	printf("rate_tx=%f, pkt_size=%d, tx_speed_bps=%d\n", rate_tx, (pkt_size * 8), tx_speed_bps);
+	printf("rate_tx=%f, pkt_size=%d (bits), tx_speed=%d (bits/s)\n", rate_tx, (pkt_size * 8), tx_speed_bps);
 	printf("rate_tx=%d\n", (u_int32_t)rate_tx);
 
 	for (repeat = 0; repeat < repeat_max; ++repeat) {
@@ -202,25 +188,15 @@ gint32 main(int argc, char *argv[]) {
 	}
 
 
-	libnet_destroy(tx_queue[QUEUE_0]);
-	libnet_destroy(tx_queue[QUEUE_1]);
-	libnet_destroy(tx_queue[QUEUE_2]);
-	libnet_destroy(tx_queue[QUEUE_3]);
-	libnet_destroy(tx_queue[QUEUE_4]);
-	libnet_destroy(tx_queue[QUEUE_5]);
-	libnet_destroy(tx_queue[QUEUE_6]);
-	libnet_destroy(tx_queue[QUEUE_7]);
+	for ( q = QUEUE_0; q<QUEUE_SIZE; q++) {
+		libnet_destroy(tx_queue[q]);
+	}
 	return (EXIT_SUCCESS);
 
 	bad: {
-		libnet_destroy(tx_queue[QUEUE_0]);
-		libnet_destroy(tx_queue[QUEUE_1]);
-		libnet_destroy(tx_queue[QUEUE_2]);
-		libnet_destroy(tx_queue[QUEUE_3]);
-		libnet_destroy(tx_queue[QUEUE_4]);
-		libnet_destroy(tx_queue[QUEUE_5]);
-		libnet_destroy(tx_queue[QUEUE_6]);
-		libnet_destroy(tx_queue[QUEUE_7]);
+		for ( q = QUEUE_0; q<QUEUE_SIZE; q++) {
+			libnet_destroy(tx_queue[q]);
+		}
 		return (EXIT_FAILURE);
 	}
 
@@ -237,6 +213,7 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 		{ "macdst"     ,  0 , 0, G_OPTION_ARG_STRING , &((options->macdst)->str)     , "destination mac address", NULL },
 		{ "ipsrc"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipsrc)->str)      , "source IP ", NULL },
 		{ "ipdst"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipdst)->str)      , "dest IP ", NULL },
+		{ "dscp"       ,  0 , 0, G_OPTION_ARG_INT    , &(options->dscp)              , "dscp [0-63]", NULL },
 		{ "vid"        ,  0 , 0, G_OPTION_ARG_INT    , &(options->vid)            , "vlan id [1-4096]", NULL },
 		{ "vidprio"    ,  0 , 0, G_OPTION_ARG_INT    , &(options->vidprio)        , "vlan priority [0-7]", NULL },
 		{ "rotate"     ,  0 , 0, G_OPTION_ARG_NONE   , &(options->vidrotate)      , "rotate vlan priority", NULL },
@@ -276,9 +253,10 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 	g_print("ipdst       %s\n",(options->ipdst)->str     ) ;
 	g_print("macsrc      %s\n",(options->macsrc)->str    ) ;
 	g_print("ipsrc       %s\n",(options->ipsrc)->str     ) ;
-	g_print("vid        %d\n" ,options->vid         ) ;
-	g_print("vidprio    %d\n" ,options->vidprio     ) ;
-	g_print("vidrotate  %d\n" ,options->vidrotate   ) ;
+	g_print("dscp        %d\n",options->dscp        ) ;
+	g_print("vid         %d\n",options->vid         ) ;
+	g_print("vidprio     %d\n",options->vidprio     ) ;
+	g_print("vidrotate   %d\n",options->vidrotate   ) ;
 	g_print("udpdst      %d\n",options->udpdst      ) ;
 	g_print("udpsrc      %d\n",options->udpsrc      ) ;
 	g_print("pktsize     %d\n",options->pktsize     ) ;
@@ -334,6 +312,7 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
     vlan_prio = (u_int8_t) options->vidprio + queue;
     udp_src_prt = (u_int16_t) options->udpsrc + queue;
     udp_dst_prt = (u_int16_t) options->udpdst + queue;
+    ip_tos = (u_int8_t) options->dscp + queue;
 
 	//=====================================================================
 	printf("libnet_build_udp\n");
