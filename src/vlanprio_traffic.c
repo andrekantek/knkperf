@@ -35,22 +35,46 @@
         } while (0)
 
 
-struct parsed_options
+struct vlan_options
 {
-	GString*  interface;
 	GString*  macsrc;
 	GString*  macdst;
-	GString*  ipdst;
-	GString*  ipsrc;
-	gint      vid;
-	gint      vidprio;
+	gint      id;
+	gint      prio;
+};
+typedef struct vlan_options vlan_options_t;
+
+struct ipv4_options
+{
+	GString*  dst;
+	GString*  src;
 	gint      dscp;
-	gboolean  vidrotate;
-	gint      udpsrc;
-	gint      udpdst;
+};
+typedef struct ipv4_options ipv4_options_t;
+
+struct udp_options
+{
+	gint      src;
+	gint      dst;
+};
+typedef struct udp_options udp_options_t;
+
+struct tx_options
+{
+	GString*  interface;
+	gboolean  rotate;
 	gint      pktsize;
-	gint      txrate;
+	gint      rate;
 	gint      packets;
+};
+typedef struct tx_options tx_options_t;
+
+struct parsed_options
+{
+	tx_options_t   tx;
+	vlan_options_t vlan;
+	ipv4_options_t ipv4;
+	udp_options_t  udp;
 };
 typedef struct parsed_options parsed_options_t;
 
@@ -70,6 +94,7 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options);
 
 gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* options);
 
+gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* options);
 /*
  ============================================================================
  */
@@ -78,20 +103,23 @@ gint32 main(int argc, char *argv[]) {
 	printf("=====  started ======\n");
 
 	parsed_options_t options;
-	options.interface = g_string_new("eth0");
-	options.macsrc    = g_string_new("00:00:00:00:00:00");
-	options.macdst    = g_string_new("00:00:00:00:00:00");
-	options.ipdst     = g_string_new("000.000.000.000");
-	options.ipsrc     = g_string_new("000.000.000.000");
-	options.dscp      =  0;
-	options.vid       =  0;
-	options.vidprio   = -1;
-	options.vidrotate =  0;
-	options.udpsrc    =  0;
-	options.udpdst    =  0;
-	options.pktsize   =  0;
-	options.txrate    =  0;
-	options.packets   =  0;
+	options.tx.interface =  g_string_new("eth0");
+	options.tx.pktsize   =  0;
+	options.tx.rate      =  0;
+	options.tx.packets   =  0;
+	options.tx.rotate    =  0;
+
+	options.vlan.macsrc  = g_string_new("00:00:00:00:00:00");
+	options.vlan.macdst  = g_string_new("00:00:00:00:00:00");
+	options.vlan.id      =  0;
+	options.vlan.prio    = -1;
+
+	options.ipv4.dst     = g_string_new("000.000.000.000");
+	options.ipv4.src     = g_string_new("000.000.000.000");
+	options.ipv4.dscp    = 0;
+
+	options.udp.src      =  0;
+	options.udp.dst      =  0;
 
 	//==========================================================================
 	parseOptions(argc,argv,&options);
@@ -99,25 +127,34 @@ gint32 main(int argc, char *argv[]) {
 	//==========================================================================
 	printf("init libnet\n");
 	gint q = 0;
-	libnet_t *tx_queue[QUEUE_SIZE];
-	for ( q = QUEUE_0; q<QUEUE_SIZE; q++) {
-		char errbuf[LIBNET_ERRBUF_SIZE];
-		tx_queue[q] = libnet_init(LIBNET_LINK, options.interface->str, errbuf);
-		if (tx_queue[q] == NULL) {
+	char errbuf[LIBNET_ERRBUF_SIZE];
+	libnet_t *udp_queue[QUEUE_SIZE];
+	libnet_t *arp_queue[QUEUE_SIZE];
+
+	for (q = QUEUE_0; q < QUEUE_SIZE; q++) {
+		udp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str,errbuf);
+		if (udp_queue[q] == NULL ) {
 			fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
+		if (buildQueuePacketUdp(QUEUE_0, udp_queue[q], &options) == EXIT_FAILURE)
+			goto bad;
+		arp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str, errbuf);
+		if (udp_queue[q] == NULL ) {
+			fprintf(stderr, "libnet_init() failed: %s", errbuf);
+			goto bad;
+		}
+		if (buildQueuePacketArp(QUEUE_0, arp_queue[q], &options) == EXIT_FAILURE )
+			goto bad;
 	}
 
-	printf("build packet\n");
-	if (buildQueuePacketUdp(QUEUE_0, tx_queue[QUEUE_0], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_1, tx_queue[QUEUE_1], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_2, tx_queue[QUEUE_2], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_3, tx_queue[QUEUE_3], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_4, tx_queue[QUEUE_4], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_5, tx_queue[QUEUE_5], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_6, tx_queue[QUEUE_6], &options) == EXIT_FAILURE) goto bad;
-	if (buildQueuePacketUdp(QUEUE_7, tx_queue[QUEUE_7], &options) == EXIT_FAILURE) goto bad;
+
+	gint32 arp_tx = libnet_write(arp_queue[QUEUE_0]);
+	if (arp_tx == -1) {
+		fprintf(stderr, "Write error: %s\n", libnet_geterror(arp_queue[QUEUE_0]));
+		goto bad;
+	}
+
 
 
 	//=====================================================================
@@ -132,12 +169,12 @@ gint32 main(int argc, char *argv[]) {
 	int repeat_max = 0;
 	int rotate_vlan_prio = 0;
 	u_int32_t loop_delay = 65;
-    tx_speed_bps = options.txrate;
-    repeat_max = options.packets;
-    rotate_vlan_prio = (int) options.vidrotate;
-	u_int8_t tx_queue_prio = QUEUE_0;
+    tx_speed_bps = options.tx.rate;
+    repeat_max = options.tx.packets;
+    rotate_vlan_prio = (int) options.tx.rotate;
+	u_int8_t udp_queue_prio = QUEUE_0;
 
-	u_int32_t pkt_size = libnet_getpacket_size(tx_queue[tx_queue_prio]);
+	u_int32_t pkt_size = libnet_getpacket_size(udp_queue[udp_queue_prio]);
 	printf("libnet_write, packet_size=%d\n", pkt_size);
 	gettimeofday(&start_time, NULL);
 	float rate_tx = ((((float)pkt_size * 8)/(float)tx_speed_bps))*1000000;
@@ -145,18 +182,18 @@ gint32 main(int argc, char *argv[]) {
 	printf("rate_tx=%d\n", (u_int32_t)rate_tx);
 
 	for (repeat = 0; repeat < repeat_max; ++repeat) {
-		int32_t bytes_written = libnet_write(tx_queue[tx_queue_prio]);
+		int32_t bytes_written = libnet_write(udp_queue[udp_queue_prio]);
 		if (bytes_written == -1) {
-			fprintf(stderr, "Write error: %s\n", libnet_geterror(tx_queue[tx_queue_prio]));
+			fprintf(stderr, "Write error: %s\n", libnet_geterror(udp_queue[udp_queue_prio]));
 			goto bad;
 		}
 
 		if (rotate_vlan_prio==1) {
 			// modify packet
-			if (tx_queue_prio == QUEUE_7) {
-				tx_queue_prio = QUEUE_0;
+			if (udp_queue_prio == QUEUE_7) {
+				udp_queue_prio = QUEUE_0;
 			} else {
-				tx_queue_prio++;
+				udp_queue_prio++;
 			}
 		}
 
@@ -173,8 +210,8 @@ gint32 main(int argc, char *argv[]) {
 	struct libnet_stats ls[QUEUE_SIZE];
 	for (queue_stat = QUEUE_0; queue_stat <= QUEUE_7; queue_stat++) {
 
-		libnet_stats(tx_queue[queue_stat], &ls[queue_stat]);
-		fprintf(stdout, "tx_queue[%d]: Packets sent:  %llu,"
+		libnet_stats(udp_queue[queue_stat], &ls[queue_stat]);
+		fprintf(stdout, "udp_queue[%d]: Packets sent:  %llu,"
 				"Packet errors: %llu,"
 				"Bytes written: %llu\n",queue_stat,
 				(long long unsigned int)ls[queue_stat].packets_sent,
@@ -183,20 +220,22 @@ gint32 main(int argc, char *argv[]) {
 
 		float delta_time_us = delta_time.tv_sec + (delta_time.tv_usec /1000000.0);
 		float tx_speed = ((ls[queue_stat].bytes_written * 8) / delta_time_us);
-		fprintf(stdout, "tx_queue[%d]: Tx speed :  %f bps\n", queue_stat, tx_speed);
+		fprintf(stdout, "udp_queue[%d]: Tx speed :  %f bps\n", queue_stat, tx_speed);
 
 	}
 
 
 	for ( q = QUEUE_0; q<QUEUE_SIZE; q++) {
-		libnet_destroy(tx_queue[q]);
+		libnet_destroy(udp_queue[q]);
 	}
+	libnet_destroy(arp_queue[QUEUE_0]);
 	return (EXIT_SUCCESS);
 
 	bad: {
 		for ( q = QUEUE_0; q<QUEUE_SIZE; q++) {
-			libnet_destroy(tx_queue[q]);
+			libnet_destroy(udp_queue[q]);
 		}
+		libnet_destroy(arp_queue[QUEUE_0]);
 		return (EXIT_FAILURE);
 	}
 
@@ -208,20 +247,20 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 	g_print("====> Entering   %s:%d\n",__FUNCTION__,__LINE__) ;
 
 	GOptionEntry cmd_entries[] = {
-		{ "interface"  , 'i', 0, G_OPTION_ARG_STRING , &((options->interface)->str)  , "interface", NULL },
-		{ "macsrc"     ,  0 , 0, G_OPTION_ARG_STRING , &((options->macsrc)->str)     , "source mac address", NULL },
-		{ "macdst"     ,  0 , 0, G_OPTION_ARG_STRING , &((options->macdst)->str)     , "destination mac address", NULL },
-		{ "ipsrc"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipsrc)->str)      , "source IP ", NULL },
-		{ "ipdst"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipdst)->str)      , "dest IP ", NULL },
-		{ "dscp"       ,  0 , 0, G_OPTION_ARG_INT    , &(options->dscp)              , "dscp [0-63]", NULL },
-		{ "vid"        ,  0 , 0, G_OPTION_ARG_INT    , &(options->vid)            , "vlan id [1-4096]", NULL },
-		{ "vidprio"    ,  0 , 0, G_OPTION_ARG_INT    , &(options->vidprio)        , "vlan priority [0-7]", NULL },
-		{ "rotate"     ,  0 , 0, G_OPTION_ARG_NONE   , &(options->vidrotate)      , "rotate vlan priority", NULL },
-		{ "udpsrc"     ,  0 , 0, G_OPTION_ARG_INT    , &(options->udpsrc  )       , "source UDP port", NULL },
-		{ "udpdst"     ,  0 , 0, G_OPTION_ARG_INT    , &(options->udpdst  )       , "dest UDP port", NULL },
-		{ "pktsize"    , 's', 0, G_OPTION_ARG_INT    , &(options->pktsize )       , "UDP payload size in bytes", NULL },
-		{ "txrate"     , 't', 0, G_OPTION_ARG_INT    , &(options->txrate  )       , "transmission rate in bps", NULL },
-		{ "packets"    , 'p', 0, G_OPTION_ARG_INT    , &(options->packets )       , "number of packets for tx", NULL },
+		{ "interface"  , 'i', 0, G_OPTION_ARG_STRING , &((options->tx.interface)->str)  , "tx interface", NULL },
+		{ "pktsize"    , 's', 0, G_OPTION_ARG_INT    , &(options->tx.pktsize )          , "tx payload size in bytes", NULL },
+		{ "txrate"     , 't', 0, G_OPTION_ARG_INT    , &(options->tx.rate  )            , "tx rate in bps", NULL },
+		{ "packets"    , 'p', 0, G_OPTION_ARG_INT    , &(options->tx.packets )          , "tx number of packets ", NULL },
+		{ "rotate"     ,  0 , 0, G_OPTION_ARG_NONE   , &(options->tx.rotate)            , "tx rotate queue", NULL },
+		{ "macsrc"     ,  0 , 0, G_OPTION_ARG_STRING , &((options->vlan.macsrc)->str)   , "vlan source mac address", NULL },
+		{ "macdst"     ,  0 , 0, G_OPTION_ARG_STRING , &((options->vlan.macdst)->str)   , "vlan destination mac address", NULL },
+		{ "vid"        ,  0 , 0, G_OPTION_ARG_INT    , &(options->vlan.id)              , "vlan id [1-4096]", NULL },
+		{ "vidprio"    ,  0 , 0, G_OPTION_ARG_INT    , &(options->vlan.prio)            , "vlan priority [0-7]", NULL },
+		{ "ipsrc"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipv4.src)->str)      , "ipv4 source address ", NULL },
+		{ "ipdst"      ,  0 , 0, G_OPTION_ARG_STRING , &((options->ipv4.dst)->str)      , "ipv4 dest address ", NULL },
+		{ "dscp"       ,  0 , 0, G_OPTION_ARG_INT    , &(options->ipv4.dscp)            , "ipv4 dscp [0-63]", NULL },
+		{ "udpsrc"     ,  0 , 0, G_OPTION_ARG_INT    , &(options->udp.src  )            , "udp source port", NULL },
+		{ "udpdst"     ,  0 , 0, G_OPTION_ARG_INT    , &(options->udp.dst  )            , "udp dest port", NULL },
 		{ NULL }
 	};
 
@@ -236,32 +275,38 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 	}
 
 	// checks
-	if (options->vid < 1 || options->vid > 4096) {
-		fprintf(stderr, "invalid vid: %d\n", options->vid);
+	if (options->vlan.id < 1 || options->vlan.id > 4096) {
+		fprintf(stderr, "invalid vid: %d\n", options->vlan.id);
 		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
-	if (options->vidprio < 0 || options->vidprio > 7) {
-		fprintf(stderr, "invalid vidprio: %d\n", options->vidprio);
+	if (options->vlan.prio < 0 || options->vlan.prio > 7) {
+		fprintf(stderr, "invalid vlan priority: %d\n", options->vlan.prio);
 		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
-	g_print("interface   %s\n",(options->interface)->str ) ;
-	g_print("macdst      %s\n",(options->macdst)->str    ) ;
-	g_print("ipdst       %s\n",(options->ipdst)->str     ) ;
-	g_print("macsrc      %s\n",(options->macsrc)->str    ) ;
-	g_print("ipsrc       %s\n",(options->ipsrc)->str     ) ;
-	g_print("dscp        %d\n",options->dscp        ) ;
-	g_print("vid         %d\n",options->vid         ) ;
-	g_print("vidprio     %d\n",options->vidprio     ) ;
-	g_print("vidrotate   %d\n",options->vidrotate   ) ;
-	g_print("udpdst      %d\n",options->udpdst      ) ;
-	g_print("udpsrc      %d\n",options->udpsrc      ) ;
-	g_print("pktsize     %d\n",options->pktsize     ) ;
-	g_print("txrate      %d\n",options->txrate      ) ;
-    g_print("packets     %d\n",options->packets     ) ;
+	if (options->ipv4.dscp < 0 || options->ipv4.dscp > 63) {
+		fprintf(stderr, "invalid dscp: %d\n", options->ipv4.dscp);
+		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
+		return (EXIT_FAILURE);
+	}
+
+	g_print("tx interface %s\n",(options->tx.interface)->str ) ;
+	g_print("tx rotate    %d\n",options->tx.rotate           ) ;
+	g_print("tx pktsize   %d\n",options->tx.pktsize          ) ;
+	g_print("tx rate      %d\n",options->tx.rate             ) ;
+    g_print("tx packets   %d\n",options->tx.packets          ) ;
+	g_print("vlan macdst  %s\n",(options->vlan.macdst)->str  ) ;
+	g_print("vlan macsrc  %s\n",(options->vlan.macsrc)->str  ) ;
+	g_print("vlan vid     %d\n",options->vlan.id             ) ;
+	g_print("vlan prio    %d\n",options->vlan.prio           ) ;
+	g_print("ipv4 ipdst   %s\n",(options->ipv4.dst)->str     ) ;
+	g_print("ipv4 ipsrc   %s\n",(options->ipv4.src)->str     ) ;
+	g_print("ipv4 dscp    %d\n",options->ipv4.dscp           ) ;
+	g_print("udp dst      %d\n",options->udp.dst             ) ;
+	g_print("udp src      %d\n",options->udp.src             ) ;
 
 	g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 	return (EXIT_SUCCESS);
@@ -272,60 +317,24 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	//==========================================================================
 	int len;
 
-	// layer 2
-	u_char *mac_dst, *mac_src;
-	libnet_ptag_t vlan_ptag = 0;
-	u_int8_t vlan_cfi_flag = 0;
-	u_int8_t *vlan_payload = NULL;
-	u_int32_t vlan_payload_s = 0;
-	u_int8_t vlan_prio;
-	u_int16_t vlan_id;
-
-	// layer 3
-	libnet_ptag_t ip_ptag = 0;
-	u_int8_t ip_tos = 0;
-	u_int8_t ip_id = 0;
-	u_int8_t ip_frag = 0;
-	u_int8_t ip_ttl = 64;
-	u_short ip_proto = IPPROTO_UDP;
-	u_int16_t ip_chksum = 0;
-	u_int8_t *ip_payload = NULL;
-	u_int32_t ip_payload_s = 0;
-	u_int32_t ip_src;
-	u_int32_t ip_dst;
-
-	// layer 4
-	libnet_ptag_t udp_ptag = 0;
-	u_int16_t udp_checksum = 0;
-	u_int16_t udp_src_prt;
-	u_int16_t udp_dst_prt;
-	u_int8_t *udp_payload; // ==> user payload
-	u_int32_t udp_payload_s;
-
-
-    //eth_device = (options.interface)->str;
-    mac_src = libnet_hex_aton((options->macsrc)->str, &len);
-    mac_dst = libnet_hex_aton((options->macdst)->str, &len);
-    vlan_id = (u_int16_t) options->vid;
-    udp_payload_s = options->pktsize;
-
-    vlan_prio = (u_int8_t) options->vidprio + queue;
-    udp_src_prt = (u_int16_t) options->udpsrc + queue;
-    udp_dst_prt = (u_int16_t) options->udpdst + queue;
-    ip_tos = (u_int8_t) options->dscp + queue;
-
 	//=====================================================================
 	printf("libnet_build_udp\n");
+	libnet_ptag_t udp_ptag = 0;
+	u_int16_t udp_checksum = 0;
+	u_int8_t *udp_payload; // ==> user payload
 	int j = 0;
-	u_char payload[udp_payload_s];
-	for (j = 0; j < udp_payload_s; j++) {
+	u_char payload[options->tx.pktsize];
+	for (j = 0; j < options->tx.pktsize; j++) {
 		payload[j] = libnet_get_prand(LIBNET_PR8);
 	}
 	udp_payload = &payload[0];
 
-	u_int32_t udp_pkt_len = LIBNET_UDP_H + udp_payload_s;
-	udp_ptag = libnet_build_udp(udp_src_prt, udp_dst_prt, udp_pkt_len,
-			udp_checksum, udp_payload, udp_payload_s, lnet, 0);
+	u_int32_t udp_pkt_len = LIBNET_UDP_H + options->tx.pktsize;
+	udp_ptag = libnet_build_udp(
+			((u_int16_t) options->udp.src + queue),
+			((u_int16_t) options->udp.dst + queue),
+			udp_pkt_len, udp_checksum, udp_payload,
+			options->tx.pktsize, lnet, 0);
 	if (udp_ptag == -1) {
 		fprintf(stderr, "Can't build UDP header: %s\n", libnet_geterror(lnet));
 		return(EXIT_FAILURE);
@@ -333,15 +342,24 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 
 	//=====================================================================
 	printf("libnet_build_ipv4\n");
+	libnet_ptag_t ip_ptag = 0;
+	u_int8_t ip_id = 0;
+	u_int8_t ip_frag = 0;
+	u_int8_t ip_ttl = 64;
+	u_short ip_proto = IPPROTO_UDP;
+	u_int16_t ip_chksum = 0;
+	u_int8_t *ip_payload = NULL;
+	u_int32_t ip_payload_s = 0;
 	u_int16_t ip_hdr_len = LIBNET_IPV4_H + udp_pkt_len;
 
-	if ((ip_dst = libnet_name2addr4(lnet, (options->ipdst)->str, LIBNET_DONT_RESOLVE))
-			== -1) {
+	u_int8_t  ip_tos    = (u_int8_t) options->ipv4.dscp + queue;
+	u_int32_t ip_src;
+	u_int32_t ip_dst;
+	if ((ip_dst = libnet_name2addr4(lnet, (options->ipv4.dst)->str, LIBNET_DONT_RESOLVE)) == -1) {
 		fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
-	if ((ip_src = libnet_name2addr4(lnet, (options->ipsrc)->str, LIBNET_DONT_RESOLVE))
-			== -1) {
+	if ((ip_src = libnet_name2addr4(lnet, (options->ipv4.src)->str, LIBNET_DONT_RESOLVE)) == -1) {
 		fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
@@ -356,6 +374,20 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 
 	//====================================================================
 	printf("libnet_build_802_1q\n");
+	// layer 2
+	u_char *mac_dst, *mac_src;
+	libnet_ptag_t vlan_ptag = 0;
+	u_int8_t vlan_cfi_flag = 0;
+	u_int8_t *vlan_payload = NULL;
+	u_int32_t vlan_payload_s = 0;
+	u_int8_t vlan_prio;
+	u_int16_t vlan_id;
+
+    mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
+    mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
+    vlan_id = (u_int16_t) options->vlan.id;
+    vlan_prio = (u_int8_t) options->vlan.prio + queue;
+
 	vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN, vlan_prio,
 			vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
 			lnet, 0);
@@ -366,4 +398,74 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	}
 	return (EXIT_SUCCESS);
 
+}
+
+gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* options)
+{
+	//==========================================================================
+	int len;
+	u_char *mac_dst, *mac_src;
+    mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
+    mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
+
+
+	//==========================================================================
+	// layer 2
+	printf("libnet_build_ARP\n");
+	u_int32_t ip_src;
+	u_int32_t ip_dst;
+	if ((ip_dst = libnet_name2addr4(lnet, (options->ipv4.dst)->str, LIBNET_DONT_RESOLVE)) == -1) {
+		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		return(EXIT_FAILURE);
+	}
+	if ((ip_src = libnet_name2addr4(lnet, (options->ipv4.src)->str, LIBNET_DONT_RESOLVE)) == -1) {
+		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		return(EXIT_FAILURE);
+	}
+
+	libnet_ptag_t arp_ptag = 0;
+	arp_ptag = libnet_build_arp(
+            ARPHRD_ETHER,                           /* hardware addr */
+            ETHERTYPE_IP,                           /* protocol addr */
+            6,                                      /* hardware addr size */
+            4,                                      /* protocol addr size */
+            ARPOP_REPLY,                            /* operation type */
+            mac_src,                               /* sender hardware addr */
+            (u_int8_t *)&ip_src,                         /* sender protocol addr */
+            mac_dst,                               /* target hardware addr */
+            (u_int8_t *)&ip_dst,                         /* target protocol addr */
+            NULL,                                   /* payload */
+            0,                                      /* payload size */
+            lnet,                                      /* libnet context */
+            0);                                     /* libnet id */
+	if (arp_ptag == -1) {
+		fprintf(stderr, "Can't build ARP header: %s\n",
+				libnet_geterror(lnet));
+		return(EXIT_FAILURE);
+	}
+
+	//====================================================================
+	// layer 2
+	printf("libnet_build_802_1q\n");
+
+	libnet_ptag_t vlan_ptag = 0;
+	u_int8_t vlan_cfi_flag = 0;
+	u_int8_t *vlan_payload = NULL;
+	u_int32_t vlan_payload_s = 0;
+	u_int8_t vlan_prio;
+	u_int16_t vlan_id;
+
+    vlan_id = (u_int16_t) options->vlan.id;
+    vlan_prio = (u_int8_t) options->vlan.prio + queue;
+
+	vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN, vlan_prio,
+			vlan_cfi_flag, vlan_id, ETHERTYPE_ARP, vlan_payload, vlan_payload_s,
+			lnet, 0);
+	if (vlan_ptag == -1) {
+		fprintf(stderr, "Can't build 802.1q header: %s\n",
+				libnet_geterror(lnet));
+		return(EXIT_FAILURE);
+	}
+
+	return (EXIT_SUCCESS);
 }
