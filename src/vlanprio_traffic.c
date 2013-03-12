@@ -137,23 +137,23 @@ gint32 main(int argc, char *argv[]) {
 			fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
-		if (buildQueuePacketUdp(QUEUE_0, udp_queue[q], &options) == EXIT_FAILURE)
+		if (buildQueuePacketUdp(q, udp_queue[q], &options) == EXIT_FAILURE)
 			goto bad;
 		arp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str, errbuf);
 		if (udp_queue[q] == NULL ) {
 			fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
-		if (buildQueuePacketArp(QUEUE_0, arp_queue[q], &options) == EXIT_FAILURE )
+		if (buildQueuePacketArp(q, arp_queue[q], &options) == EXIT_FAILURE )
 			goto bad;
 	}
 
 
-	gint32 arp_tx = libnet_write(arp_queue[QUEUE_0]);
-	if (arp_tx == -1) {
-		fprintf(stderr, "Write error: %s\n", libnet_geterror(arp_queue[QUEUE_0]));
-		goto bad;
-	}
+//	gint32 arp_tx = libnet_write(arp_queue[QUEUE_0]);
+//	if (arp_tx == -1) {
+//		fprintf(stderr, "Write error: %s\n", libnet_geterror(arp_queue[QUEUE_0]));
+//		goto bad;
+//	}
 
 
 
@@ -384,6 +384,10 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	u_int16_t vlan_id;
 
     mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
+    u_int8_t new_byte = (mac_src[5]+queue);
+    mac_src[5] = (u_char)new_byte;
+    printf("mac_src[%X:%X:%X:%X:%X:%X] queue=%X new_byte=%X\n",
+    		mac_src[0],mac_src[1],mac_src[2],mac_src[3],mac_src[4],mac_src[5],queue,new_byte);
     mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
     vlan_id = (u_int16_t) options->vlan.id;
     vlan_prio = (u_int8_t) options->vlan.prio + queue;
@@ -406,6 +410,8 @@ gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	int len;
 	u_char *mac_dst, *mac_src;
     mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
+    u_int8_t new_byte = (mac_src[5]+queue);
+    mac_src[5] = (u_char)new_byte;
     mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
 
 
