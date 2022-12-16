@@ -451,33 +451,45 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 		return(EXIT_FAILURE);
 	}
 
-	//====================================================================
-	printf("libnet_build_802_1q\n");
-	// layer 2
 	u_char *mac_dst, *mac_src;
-	libnet_ptag_t vlan_ptag = 0;
-	u_int8_t vlan_cfi_flag = 0;
-	u_int8_t *vlan_payload = NULL;
-	u_int32_t vlan_payload_s = 0;
-	u_int8_t vlan_prio;
-	u_int16_t vlan_id;
+	mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
+	u_int8_t new_byte = (mac_src[5]+queue);
+	mac_src[5] = (u_char)new_byte;
+	printf("mac_src[%X:%X:%X:%X:%X:%X] queue=%X new_byte=%X\n",
+			mac_src[0],mac_src[1],mac_src[2],mac_src[3],mac_src[4],mac_src[5],queue,new_byte);
+	mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
+	if (options->vlan.id != 0) {
+		//====================================================================
+		printf("libnet_build_802_1q\n");
+		// layer 2
+		libnet_ptag_t vlan_ptag = 0;
+		u_int8_t vlan_cfi_flag = 0;
+		u_int8_t *vlan_payload = NULL;
+		u_int32_t vlan_payload_s = 0;
+		u_int8_t vlan_prio;
+		u_int16_t vlan_id;
 
-    mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
-    u_int8_t new_byte = (mac_src[5]+queue);
-    mac_src[5] = (u_char)new_byte;
-    printf("mac_src[%X:%X:%X:%X:%X:%X] queue=%X new_byte=%X\n",
-    		mac_src[0],mac_src[1],mac_src[2],mac_src[3],mac_src[4],mac_src[5],queue,new_byte);
-    mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
-    vlan_id = (u_int16_t) options->vlan.id;
-    vlan_prio = (u_int8_t) options->vlan.prio + queue;
+		vlan_id = (u_int16_t) options->vlan.id;
+		vlan_prio = (u_int8_t) options->vlan.prio + queue;
 
-	vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN, vlan_prio,
-			vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
-			lnet, 0);
-	if (vlan_ptag == -1) {
-		fprintf(stderr, "Can't build 802.1q header: %s\n",
-				libnet_geterror(lnet));
-		return(EXIT_FAILURE);
+		vlan_ptag = libnet_build_802_1q(mac_dst, mac_src, ETHERTYPE_VLAN, vlan_prio,
+				vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
+				lnet, 0);
+		if (vlan_ptag == -1) {
+			fprintf(stderr, "Can't build 802.1q header: %s\n",
+					libnet_geterror(lnet));
+			return(EXIT_FAILURE);
+		}
+	} else {
+		libnet_ptag_t ether_tag = 0;
+		u_int8_t *ether_payload = NULL;
+		u_int32_t ether_payload_s = 0;
+		ether_tag = libnet_build_ethernet(mac_dst, mac_src, ETHERTYPE_IP, ether_payload, ether_payload_s, lnet, 0);
+		if (ether_tag == -1) {
+			fprintf(stderr, "Can't build ethernet header: %s\n",
+					libnet_geterror(lnet));
+			return(EXIT_FAILURE);
+		}
 	}
 	return (EXIT_SUCCESS);
 
