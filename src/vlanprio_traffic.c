@@ -135,7 +135,7 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
  */
 gint32 main(int argc, char *argv[]) {
 
-	printf("=====  started ======\n");
+	// printf("=====  started ======\n");
 
 	parsed_options_t options;
 	options.tx.interface =  g_string_new("eth0");
@@ -171,7 +171,7 @@ gint32 main(int argc, char *argv[]) {
 	parseOptions(argc,argv,&options);
 
 	//==========================================================================
-	printf("init libnet\n");
+	// printf("init libnet\n");
 	gint q = 0;
 	char errbuf[LIBNET_ERRBUF_SIZE];
 	libnet_t *udp_queue[QUEUE_SIZE];
@@ -182,7 +182,7 @@ gint32 main(int argc, char *argv[]) {
 		//==========================================================================
 		udp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str,errbuf);
 		if (udp_queue[q] == NULL ) {
-			fprintf(stderr, "libnet_init() failed: %s", errbuf);
+			// fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
 		if (buildQueuePacketUdp(q, udp_queue[q], &options) == EXIT_FAILURE)
@@ -190,7 +190,7 @@ gint32 main(int argc, char *argv[]) {
 		//==========================================================================
 		arp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str, errbuf);
 		if (arp_queue[q] == NULL ) {
-			fprintf(stderr, "libnet_init() failed: %s", errbuf);
+			// fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
 		if (buildQueuePacketArp(q, arp_queue[q], &options) == EXIT_FAILURE )
@@ -198,7 +198,7 @@ gint32 main(int argc, char *argv[]) {
 		//==========================================================================
 		igmp_queue[q] = libnet_init(LIBNET_LINK, options.tx.interface->str, errbuf);
 		if (igmp_queue[q] == NULL ) {
-			fprintf(stderr, "libnet_init() failed: %s", errbuf);
+			// fprintf(stderr, "libnet_init() failed: %s", errbuf);
 			goto bad;
 		}
 		if (buildQueuePacketIgmp(q, igmp_queue[q], &options) == EXIT_FAILURE )
@@ -229,16 +229,16 @@ gint32 main(int argc, char *argv[]) {
 	if (options.igmp.use) tx_queue = igmp_queue[queue_prio];
 
 	u_int32_t pkt_size = libnet_getpacket_size(&tx_queue[queue_prio]);
-	printf("libnet_write, packet_size=%d\n", pkt_size);
+	// printf("libnet_write, packet_size=%d\n", pkt_size);
 	gettimeofday(&start_time, NULL);
 	float rate_tx = ((((float)pkt_size * 8)/(float)tx_speed_bps))*1000000;
-	printf("rate_tx=%f, pkt_size=%d (bits), tx_speed=%d (bits/s)\n", rate_tx, (pkt_size * 8), tx_speed_bps);
-	printf("rate_tx=%d\n", (u_int32_t)rate_tx);
+	// printf("rate_tx=%f, pkt_size=%d (bits), tx_speed=%d (bits/s)\n", rate_tx, (pkt_size * 8), tx_speed_bps);
+	// printf("rate_tx=%d\n", (u_int32_t)rate_tx);
 
 	for (repeat = 0; repeat < repeat_max; ++repeat) {
 		int32_t bytes_written = libnet_write(&tx_queue[queue_prio]);
 		if (bytes_written == -1) {
-			fprintf(stderr, "Write error: %s\n", libnet_geterror(&tx_queue[queue_prio]));
+			// fprintf(stderr, "Write error: %s\n", libnet_geterror(&tx_queue[queue_prio]));
 			goto bad;
 		}
 
@@ -258,24 +258,23 @@ gint32 main(int argc, char *argv[]) {
 	gettimeofday(&end_time, NULL);
 
 	libnet_timersub(&end_time, &start_time, &delta_time);
-	fprintf(stdout, "Total time spent in loop: %ld.%ld\n", delta_time.tv_sec,
-			delta_time.tv_usec);
+	// fprintf(stdout, "Total time spent in loop: %ld.%ld\n", delta_time.tv_sec, delta_time.tv_usec);
 
 	guint queue_stat=0;
 	struct libnet_stats ls[QUEUE_SIZE];
 	for (queue_stat = QUEUE_0; queue_stat <= QUEUE_7; queue_stat++) {
 
 		libnet_stats(&tx_queue[queue_stat], &ls[queue_stat]);
-		fprintf(stdout, "udp_queue[%d]: Packets sent:  %llu,"
-				"Packet errors: %llu,"
-				"Bytes written: %llu\n",queue_stat,
-				(long long unsigned int)ls[queue_stat].packets_sent,
-				(long long unsigned int)ls[queue_stat].packet_errors,
-				(long long unsigned int)ls[queue_stat].bytes_written);
+		// fprintf(stdout, "udp_queue[%d]: Packets sent:  %llu,"
+				// "Packet errors: %llu,"
+				// "Bytes written: %llu\n",queue_stat,
+				// (long long unsigned int)ls[queue_stat].packets_sent,
+				// (long long unsigned int)ls[queue_stat].packet_errors,
+				// (long long unsigned int)ls[queue_stat].bytes_written);
 
 		float delta_time_us = delta_time.tv_sec + (delta_time.tv_usec /1000000.0);
 		float tx_speed = ((ls[queue_stat].bytes_written * 8) / delta_time_us);
-		fprintf(stdout, "udp_queue[%d]: Tx speed :  %f bps\n", queue_stat, tx_speed);
+		// fprintf(stdout, "udp_queue[%d]: Tx speed :  %f bps\n", queue_stat, tx_speed);
 
 	}
 
@@ -345,19 +344,19 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 
         // checks
 	if (options->vlan.id < 1 || options->vlan.id > 4096) {
-		fprintf(stderr, "invalid vid: %d\n", options->vlan.id);
+		// fprintf(stderr, "invalid vid: %d\n", options->vlan.id);
 		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
 	if (options->vlan.prio < 0 || options->vlan.prio > 7) {
-		fprintf(stderr, "invalid vlan priority: %d\n", options->vlan.prio);
+		// fprintf(stderr, "invalid vlan priority: %d\n", options->vlan.prio);
 		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
 	if (options->ipv4.dscp < 0 || options->ipv4.dscp > 63) {
-		fprintf(stderr, "invalid dscp: %d\n", options->ipv4.dscp);
+		// fprintf(stderr, "invalid dscp: %d\n", options->ipv4.dscp);
 		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
@@ -396,7 +395,7 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	int len;
 
 	//=====================================================================
-	printf("libnet_build_udp\n");
+	// printf("libnet_build_udp\n");
 	libnet_ptag_t udp_ptag = 0;
 	u_int16_t udp_checksum = 0;
 	u_int8_t *udp_payload; // ==> user payload
@@ -414,12 +413,12 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 			udp_pkt_len, udp_checksum, udp_payload,
 			options->tx.pktsize, lnet, 0);
 	if (udp_ptag == -1) {
-		fprintf(stderr, "Can't build UDP header: %s\n", libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build UDP header: %s\n", libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
 	//=====================================================================
-	printf("libnet_build_ipv4\n");
+	// printf("libnet_build_ipv4\n");
 	libnet_ptag_t ip_ptag = 0;
 	u_int8_t ip_id = 0;
 	u_int8_t ip_frag = 0;
@@ -434,11 +433,11 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	u_int32_t ip_src;
 	u_int32_t ip_dst;
 	if ((ip_dst = libnet_name2addr4(lnet, (options->ipv4.dst)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 	if ((ip_src = libnet_name2addr4(lnet, (options->ipv4.src)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 
@@ -446,7 +445,7 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 			ip_proto, ip_chksum, ip_src, ip_dst, ip_payload, ip_payload_s, lnet,
 			0);
 	if (ip_ptag == -1) {
-		fprintf(stderr, "Can't build IP header: %s\n", libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build IP header: %s\n", libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
@@ -454,12 +453,11 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 	mac_src = libnet_hex_aton((options->vlan.macsrc)->str, &len);
 	u_int8_t new_byte = (mac_src[5]+queue);
 	mac_src[5] = (u_char)new_byte;
-	printf("mac_src[%X:%X:%X:%X:%X:%X] queue=%X new_byte=%X\n",
-			mac_src[0],mac_src[1],mac_src[2],mac_src[3],mac_src[4],mac_src[5],queue,new_byte);
+	// printf("mac_src[%X:%X:%X:%X:%X:%X] queue=%X new_byte=%X\n", mac_src[0],mac_src[1],mac_src[2],mac_src[3],mac_src[4],mac_src[5],queue,new_byte);
 	mac_dst = libnet_hex_aton((options->vlan.macdst)->str, &len);
 	if (options->vlan.id != 0) {
 		//====================================================================
-		printf("libnet_build_802_1q\n");
+		// printf("libnet_build_802_1q\n");
 		// layer 2
 		libnet_ptag_t vlan_ptag = 0;
 		u_int8_t vlan_cfi_flag = 0;
@@ -475,8 +473,7 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 				vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
 				lnet, 0);
 		if (vlan_ptag == -1) {
-			fprintf(stderr, "Can't build 802.1q header: %s\n",
-					libnet_geterror(lnet));
+			// fprintf(stderr, "Can't build 802.1q header: %s\n", libnet_geterror(lnet));
 			return(EXIT_FAILURE);
 		}
 	} else {
@@ -485,8 +482,7 @@ gint32 buildQueuePacketUdp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 		u_int32_t ether_payload_s = 0;
 		ether_tag = libnet_build_ethernet(mac_dst, mac_src, ETHERTYPE_IP, ether_payload, ether_payload_s, lnet, 0);
 		if (ether_tag == -1) {
-			fprintf(stderr, "Can't build ethernet header: %s\n",
-					libnet_geterror(lnet));
+			// fprintf(stderr, "Can't build ethernet header: %s\n", libnet_geterror(lnet));
 			return(EXIT_FAILURE);
 		}
 	}
@@ -507,15 +503,15 @@ gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 
 	//==========================================================================
 	// layer 2
-	printf("libnet_build_ARP\n");
+	// printf("libnet_build_ARP\n");
 	u_int32_t ip_src;
 	u_int32_t ip_dst;
 	if ((ip_dst = libnet_name2addr4(lnet, (options->ipv4.dst)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// (stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 	if ((ip_src = libnet_name2addr4(lnet, (options->ipv4.src)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 
@@ -535,14 +531,13 @@ gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
             lnet,                                      /* libnet context */
             0);                                     /* libnet id */
 	if (arp_ptag == -1) {
-		fprintf(stderr, "Can't build ARP header: %s\n",
-				libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build ARP header: %s\n",libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
 	//====================================================================
 	// layer 2
-	printf("libnet_build_802_1q\n");
+	// printf("libnet_build_802_1q\n");
 
 	libnet_ptag_t vlan_ptag = 0;
 	u_int8_t vlan_cfi_flag = 0;
@@ -558,8 +553,7 @@ gint32 buildQueuePacketArp(guint8 queue, libnet_t *lnet, parsed_options_t* optio
 			vlan_cfi_flag, vlan_id, ETHERTYPE_ARP, vlan_payload, vlan_payload_s,
 			lnet, 0);
 	if (vlan_ptag == -1) {
-		fprintf(stderr, "Can't build 802.1q header: %s\n",
-				libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build 802.1q header: %s\n",libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
@@ -579,15 +573,15 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 
 	//==========================================================================
 	// layer 3
-	printf("libnet_build_IGMP %s \n",(options->igmp.grp)->str);
+	// printf("libnet_build_IGMP %s \n",(options->igmp.grp)->str);
 	u_int32_t igmp_grp;
 	if ((igmp_grp = libnet_name2addr4(lnet, (options->igmp.grp)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad igmp grp address: %s\n", optarg);
+		// fprintf(stderr, "Bad igmp grp address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 	uint8_t igmp_type = 0;
 	uint8_t igmp_reserved = 0;
-	printf("libnet_build_IGMP\n");
+	// printf("libnet_build_IGMP\n");
 
 	if (options->igmp.use == FALSE) {
 		return (EXIT_SUCCESS);
@@ -618,7 +612,7 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 	} else if (options->igmp.type_unknown) {
 		igmp_type = 0x99;
 	} else {
-		fprintf(stderr, "invalid igmp msg type");
+		// fprintf(stderr, "invalid igmp msg type");
 		return(EXIT_FAILURE);
 	}
 
@@ -636,12 +630,12 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 								  lnet,
 								  0);
 	if (igmp_ptag == -1) {
-		fprintf(stderr, "Can't build IGMP header: %s\n", libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build IGMP header: %s\n", libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
-	printf("finished libnet_build_IGMP\n");
+	// printf("finished libnet_build_IGMP\n");
 	//=====================================================================
-	printf("libnet_build_ipv4\n");
+	// printf("libnet_build_ipv4\n");
 	libnet_ptag_t ip_ptag = 0;
 	u_int8_t ip_id = 0;
 	u_int8_t ip_frag = 0;
@@ -656,11 +650,11 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 	u_int32_t ip_src;
 	u_int8_t  ip_tos    = ((u_int8_t) options->ipv4.dscp + queue) << 2;
 	if ((ip_dst = libnet_name2addr4(lnet, (options->ipv4.dst)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 	if ((ip_src = libnet_name2addr4(lnet, (options->ipv4.src)->str, LIBNET_DONT_RESOLVE)) == -1) {
-		fprintf(stderr, "Bad source IP address: %s\n", optarg);
+		// fprintf(stderr, "Bad source IP address: %s\n", optarg);
 		return(EXIT_FAILURE);
 	}
 
@@ -668,13 +662,13 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 			ip_proto, ip_chksum, ip_src, ip_dst, ip_payload, ip_payload_s, lnet,
 			0);
 	if (ip_ptag == -1) {
-		fprintf(stderr, "Can't build IP header: %s\n", libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build IP header: %s\n", libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
 	//====================================================================
 	// layer 2
-	printf("libnet_build_802_1q\n");
+	// printf("libnet_build_802_1q\n");
 
 	libnet_ptag_t vlan_ptag = 0;
 	u_int8_t vlan_cfi_flag = 0;
@@ -690,8 +684,7 @@ gint32 buildQueuePacketIgmp(guint8 queue, libnet_t *lnet, parsed_options_t* opti
 			vlan_cfi_flag, vlan_id, ETHERTYPE_IP, vlan_payload, vlan_payload_s,
 			lnet, 0);
 	if (vlan_ptag == -1) {
-		fprintf(stderr, "Can't build 802.1q header: %s\n",
-				libnet_geterror(lnet));
+		// fprintf(stderr, "Can't build 802.1q header: %s\n",libnet_geterror(lnet));
 		return(EXIT_FAILURE);
 	}
 
