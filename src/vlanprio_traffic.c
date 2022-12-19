@@ -335,8 +335,7 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 
         // g_print("====> %s:%d g_option_context_new\n", __FUNCTION__, __LINE__);
         context = g_option_context_new("vlan priority traffic generator");
-        // g_print("====> %s:%d g_option_context_add_main_entries\n", __FUNCTION__,
-                __LINE__);
+        // g_print("====> %s:%d g_option_context_add_main_entries\n", __FUNCTION__, __LINE__);
         g_option_context_add_main_entries(context, cmd_entries, NULL);
         // g_print("====> %s:%d g_option_context_parse\n", __FUNCTION__, __LINE__);
         if (!g_option_context_parse(context, &argc, &argv, &error)) {
