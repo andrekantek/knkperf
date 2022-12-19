@@ -301,7 +301,7 @@ gint32 main(int argc, char *argv[]) {
 gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 {
 
-	g_print("====> Entering   %s:%d\n",__FUNCTION__,__LINE__) ;
+	// g_print("====> Entering   %s:%d\n",__FUNCTION__,__LINE__) ;
 
 	GOptionEntry cmd_entries[] = {
 		{ "interface"  , 'i', 0                      , G_OPTION_ARG_STRING , &((options->tx.interface)->str)  , "tx interface", NULL },
@@ -333,61 +333,61 @@ gint32 parseOptions(int argc, char *argv[], parsed_options_t* options)
 	GError *error = NULL;
 	GOptionContext *context;
 
-        g_print("====> %s:%d g_option_context_new\n", __FUNCTION__, __LINE__);
+        // g_print("====> %s:%d g_option_context_new\n", __FUNCTION__, __LINE__);
         context = g_option_context_new("vlan priority traffic generator");
-        g_print("====> %s:%d g_option_context_add_main_entries\n", __FUNCTION__,
+        // g_print("====> %s:%d g_option_context_add_main_entries\n", __FUNCTION__,
                 __LINE__);
         g_option_context_add_main_entries(context, cmd_entries, NULL);
-        g_print("====> %s:%d g_option_context_parse\n", __FUNCTION__, __LINE__);
+        // g_print("====> %s:%d g_option_context_parse\n", __FUNCTION__, __LINE__);
         if (!g_option_context_parse(context, &argc, &argv, &error)) {
-          g_print("option parsing failed: %s\n", error->message);
+          // g_print("option parsing failed: %s\n", error->message);
           exit(EXIT_FAILURE);
         }
 
         // checks
 	if (options->vlan.id < 1 || options->vlan.id > 4096) {
 		fprintf(stderr, "invalid vid: %d\n", options->vlan.id);
-		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
+		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
 	if (options->vlan.prio < 0 || options->vlan.prio > 7) {
 		fprintf(stderr, "invalid vlan priority: %d\n", options->vlan.prio);
-		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
+		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
 	if (options->ipv4.dscp < 0 || options->ipv4.dscp > 63) {
 		fprintf(stderr, "invalid dscp: %d\n", options->ipv4.dscp);
-		g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
+		// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 		return (EXIT_FAILURE);
 	}
 
 
-	g_print("tx interface %s\n",(options->tx.interface)->str ) ;
-	g_print("tx rotate    %d\n",options->tx.rotate           ) ;
-	g_print("tx pktsize   %d\n",options->tx.pktsize          ) ;
-	g_print("tx rate      %d\n",options->tx.rate             ) ;
-    g_print("tx packets   %d\n",options->tx.packets          ) ;
-	g_print("vlan macdst  %s\n",(options->vlan.macdst)->str  ) ;
-	g_print("vlan macsrc  %s\n",(options->vlan.macsrc)->str  ) ;
-	g_print("vlan vid     %d\n",options->vlan.id             ) ;
-	g_print("vlan prio    %d\n",options->vlan.prio           ) ;
-	g_print("ipv4 ipdst   %s\n",(options->ipv4.dst)->str     ) ;
-	g_print("ipv4 ipsrc   %s\n",(options->ipv4.src)->str     ) ;
-	g_print("ipv4 dscp    %d\n",options->ipv4.dscp           ) ;
-	g_print("udp          %d\n",options->udp.use             ) ;
-	g_print("udp dst      %d\n",options->udp.dst             ) ;
-	g_print("udp src      %d\n",options->udp.src             ) ;
-	g_print("igmp           %d\n",options->igmp.use            ) ;
-	g_print("igmp leave     %d\n",options->igmp.type_leave     ) ;
-	g_print("igmp query     %d\n",options->igmp.type_query     ) ;
-	g_print("igmp report v1 %d\n",options->igmp.type_reportv1  ) ;
-	g_print("igmp report v2 %d\n",options->igmp.type_reportv2  ) ;
-	g_print("igmp unknown %d\n",options->igmp.type_unknown  ) ;
-	g_print("igmp group   %s\n",(options->igmp.grp)->str     ) ;
+	// g_print("tx interface %s\n",(options->tx.interface)->str ) ;
+	// g_print("tx rotate    %d\n",options->tx.rotate           ) ;
+	// g_print("tx pktsize   %d\n",options->tx.pktsize          ) ;
+	// g_print("tx rate      %d\n",options->tx.rate             ) ;
+    // g_print("tx packets   %d\n",options->tx.packets          ) ;
+	// g_print("vlan macdst  %s\n",(options->vlan.macdst)->str  ) ;
+	// g_print("vlan macsrc  %s\n",(options->vlan.macsrc)->str  ) ;
+	// g_print("vlan vid     %d\n",options->vlan.id             ) ;
+	// g_print("vlan prio    %d\n",options->vlan.prio           ) ;
+	// g_print("ipv4 ipdst   %s\n",(options->ipv4.dst)->str     ) ;
+	// g_print("ipv4 ipsrc   %s\n",(options->ipv4.src)->str     ) ;
+	// g_print("ipv4 dscp    %d\n",options->ipv4.dscp           ) ;
+	// g_print("udp          %d\n",options->udp.use             ) ;
+	// g_print("udp dst      %d\n",options->udp.dst             ) ;
+	// g_print("udp src      %d\n",options->udp.src             ) ;
+	// g_print("igmp           %d\n",options->igmp.use            ) ;
+	// g_print("igmp leave     %d\n",options->igmp.type_leave     ) ;
+	// g_print("igmp query     %d\n",options->igmp.type_query     ) ;
+	// g_print("igmp report v1 %d\n",options->igmp.type_reportv1  ) ;
+	// g_print("igmp report v2 %d\n",options->igmp.type_reportv2  ) ;
+	// g_print("igmp unknown %d\n",options->igmp.type_unknown  ) ;
+	// g_print("igmp group   %s\n",(options->igmp.grp)->str     ) ;
 
-	g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
+	// g_print("====> Exiting   %s:%d\n",__FUNCTION__,__LINE__) ;
 	return (EXIT_SUCCESS);
 }
 
